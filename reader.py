@@ -13,7 +13,9 @@ from PIL import Image
 
 API_ID = int(os.environ["TG_API_ID"])
 API_HASH = os.environ["TG_API_HASH"]
-SESSION = os.environ["TG_SESSION"]
+import re
+SESSION = re.sub(r"[\s\"'`]", "", os.environ["TG_SESSION"])   # نشيل أي مسافة أو سطر أو علامة تنصيص دخلت وقت النسخ
+print("TG_SESSION length:", len(SESSION), "(لازم يكون تقريباً 353–369)")
 URL = os.environ["APPS_SCRIPT_URL"]
 SECRET = os.environ["RECALLS_SECRET"]
 MAX_PER_CHANNEL = int(os.environ.get("MAX_PER_CHANNEL", "300"))
