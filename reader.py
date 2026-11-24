@@ -5,7 +5,7 @@ Runs on GitHub Actions every ~15 minutes. Secrets needed:
   TG_API_ID, TG_API_HASH, TG_SESSION, APPS_SCRIPT_URL, RECALLS_SECRET
 Channels: one per line in channels.txt (@username, t.me link, or numeric id)
 """
-import asyncio, base64, io, json, os, sys, datetime as dt
+import asyncio, base64, io, json, os, sys, time, datetime as dt
 import requests
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -23,12 +23,19 @@ MAX_PER_CHANNEL = int(os.environ.get("MAX_PER_CHANNEL", "300"))
 
 def call(action, payload):
     payload = dict(payload, secret=SECRET)
-    r = requests.post(URL, json={"action": action, "payload": payload}, timeout=120)
-    r.raise_for_status()
-    j = r.json()
-    if not j.get("ok"):
-        raise RuntimeError(f"{action}: {j.get('error')}")
-    return j.get("data") or {}
+    for attempt in range(5):                      # لو الموقع مشغول نعيد بعد شوي
+        try:
+            r = requests.post(URL, json={"action": action, "payload": payload}, timeout=180)
+            r.raise_for_status()
+            j = r.json()
+            if j.get("ok"):
+                return j.get("data") or {}
+            if j.get("code") != "BUSY":
+                raise RuntimeError(f"{action}: {j.get('error')}")
+        except (requests.RequestException, ValueError) as e:
+            print("retry", action, e)
+        time.sleep(15 * (attempt + 1))
+    raise RuntimeError(f"{action}: busy after retries")
 
 
 def jpeg_b64(raw):
