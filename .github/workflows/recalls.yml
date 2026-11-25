@@ -1,7 +1,7 @@
 name: Recalls reader
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "3,13,23,33,43,53 * * * *"   # كل 10 دقايق، بعيد عن رأس الساعة عشان ما يتأخر
   workflow_dispatch:
 concurrency:
   group: recalls
