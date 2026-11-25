@@ -21,11 +21,17 @@ SECRET = os.environ["RECALLS_SECRET"]
 MAX_PER_CHANNEL = int(os.environ.get("MAX_PER_CHANNEL", "300"))
 
 
-def call(action, payload):
+START = time.time()
+LIMIT = 11 * 60          # نخلص قبل حد GitHub (14 دقيقة) بفرق مريح
+
+
+def call(action, payload, tries=5):
     payload = dict(payload, secret=SECRET)
-    for attempt in range(5):                      # لو الموقع مشغول نعيد بعد شوي
+    # التصحيح ياخذ لين 4.5 دقايق في الموقع، فلازم ننتظر أطول من كذا
+    wait = 330 if action == "recallProcess" else 180
+    for attempt in range(tries):                      # لو الموقع مشغول نعيد بعد شوي
         try:
-            r = requests.post(URL, json={"action": action, "payload": payload}, timeout=180)
+            r = requests.post(URL, json={"action": action, "payload": payload}, timeout=wait)
             r.raise_for_status()
             j = r.json()
             if j.get("ok"):
@@ -111,9 +117,12 @@ async def main():
             print(f"✓ channel {chan_no}: {len(order)} new")
 
     # التصحيح: نطلبه من الموقع مباشرة لين يخلص (أو يقرب وقت GitHub)
-    t0 = time.time()
-    while time.time() - t0 < 8 * 60:
-        left = call("recallProcess", {}).get("left", 0)
+    while LIMIT - (time.time() - START) > 6 * 60:   # نبدأ دفعة بس لو باقي وقت يكفيها
+        try:
+            left = call("recallProcess", {}, tries=1).get("left", 0)
+        except RuntimeError as e:
+            print("وقفنا التصحيح هالمرة:", e)
+            break
         print("تصحيح — باقي:", left)
         if left == 0:
             break
