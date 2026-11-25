@@ -1,7 +1,7 @@
 name: Recalls reader
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 concurrency:
   group: recalls
@@ -9,7 +9,7 @@ concurrency:
 jobs:
   read:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,3 +24,4 @@ jobs:
           TG_SESSION: ${{ secrets.TG_SESSION }}
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
           RECALLS_SECRET: ${{ secrets.RECALLS_SECRET }}
+          CHANNELS: ${{ secrets.CHANNELS }}
