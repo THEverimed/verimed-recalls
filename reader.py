@@ -48,7 +48,10 @@ def jpeg_b64(raw):
 
 def channels():
     out = []
-    for line in open("channels.txt", encoding="utf-8"):
+    raw = os.environ.get("CHANNELS", "").replace(",", "\n").splitlines()
+    if not any(x.strip() for x in raw) and os.path.exists("channels.txt"):
+        raw = open("channels.txt", encoding="utf-8").read().splitlines()
+    for line in raw:
         line = line.split("#")[0].strip()
         if not line:
             continue
@@ -63,11 +66,11 @@ async def main():
     last = state.get("last", {})
     since = dt.datetime.fromisoformat(state.get("since", "2026-12-01")).replace(tzinfo=dt.timezone(dt.timedelta(hours=3)))
     async with TelegramClient(StringSession(SESSION), API_ID, API_HASH) as client:
-        for ch in channels():
+        for chan_no, ch in enumerate(channels(), 1):
             try:
                 ent = await client.get_entity(ch)
             except Exception as e:
-                print("!! cannot open", ch, e); continue
+                print("!! cannot open a channel:", type(e).__name__); continue
             chat_id = str(ent.id)
             title = getattr(ent, "title", None) or getattr(ent, "username", "") or chat_id
             min_id = int(last.get(chat_id, 0))
@@ -102,10 +105,20 @@ async def main():
                     continue
                 batch.append(g)
                 if len(batch) >= 8:
-                    print(title, call("recallIngest", {"items": batch})); batch = []
+                    call("recallIngest", {"items": batch}); batch = []
             if batch:
-                print(title, call("recallIngest", {"items": batch}))
-            print(f"✓ {title}: {len(order)} new")
+                call("recallIngest", {"items": batch})
+            print(f"✓ channel {chan_no}: {len(order)} new")
+
+    # التصحيح: نطلبه من الموقع مباشرة لين يخلص (أو يقرب وقت GitHub)
+    t0 = time.time()
+    while time.time() - t0 < 8 * 60:
+        left = call("recallProcess", {}).get("left", 0)
+        print("تصحيح — باقي:", left)
+        if left == 0:
+            break
+        if left < 0:          # فيه تصحيح شغال من المؤقت — نستنى شوي
+            time.sleep(30)
 
 
 if __name__ == "__main__":
