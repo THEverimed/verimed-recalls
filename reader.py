@@ -116,19 +116,25 @@ async def main():
                 call("recallIngest", {"items": batch})
             print(f"✓ channel {chan_no}: {len(order)} new")
 
-    # التصحيح: نطلبه من الموقع مباشرة لين يخلص (أو يقرب وقت GitHub)
-    while LIMIT - (time.time() - START) > 6 * 60:   # نبدأ دفعة بس لو باقي وقت يكفيها
-        try:
-            left = call("recallProcess", {}, tries=1).get("left", 0)
-        except RuntimeError as e:
-            print("وقفنا التصحيح هالمرة:", e)
-            break
-        print("تصحيح — باقي:", left)
-        if left == 0:
-            break
-        if left < 0:          # فيه تصحيح شغال من المؤقت — نستنى شوي
-            time.sleep(30)
+    # التصحيح: 3 خطوط بنفس الوقت (كل خط ياخذ ثلث الرسائل) — أسرع ×3
+    PARTS = int(os.environ.get("PARTS", "3"))
 
+    def worker(part):
+        while LIMIT - (time.time() - START) > 6 * 60:   # نبدأ دفعة بس لو باقي وقت يكفيها
+            try:
+                left = call("recallProcess", {"part": part, "parts": PARTS}, tries=1).get("left", 0)
+            except RuntimeError as e:
+                print(f"خط {part}: وقفنا هالمرة:", e)
+                return
+            print(f"خط {part} — باقي:", left)
+            if left == 0:
+                return
+            if left < 0:        # المؤقت شغال على نفس الخط — نستنى شوي
+                time.sleep(30)
+
+    import concurrent.futures as cf
+    with cf.ThreadPoolExecutor(max_workers=PARTS) as ex:
+        list(ex.map(worker, range(PARTS)))
 
 if __name__ == "__main__":
     asyncio.run(main())
