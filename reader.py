@@ -79,6 +79,7 @@ async def main():
                 print("!! cannot open a channel:", type(e).__name__); continue
             chat_id = str(ent.id)
             title = getattr(ent, "title", None) or getattr(ent, "username", "") or chat_id
+            uname = getattr(ent, "username", None) or ""   # عشان رابط الرسالة (للمصدر في ملف اليوم)
             min_id = int(last.get(chat_id, 0))
             groups, order = {}, []
             n = 0
@@ -91,7 +92,7 @@ async def main():
                     break
                 key = f"g{m.grouped_id}" if m.grouped_id else f"m{m.id}"
                 if key not in groups:
-                    groups[key] = {"chat_id": chat_id, "channel": title, "msg_id": m.id,
+                    groups[key] = {"chat_id": chat_id, "channel": title, "username": uname, "msg_id": m.id,
                                    "date": m.date.isoformat(), "text": "", "images": [], "_ids": []}
                     order.append(key)
                 g = groups[key]
